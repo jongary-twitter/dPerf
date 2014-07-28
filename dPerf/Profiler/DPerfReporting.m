@@ -1,5 +1,5 @@
 /*
- Copyright (c) 2013 New Relic, Inc.
+ Copyright (c) 2014 Twitter, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -19,51 +19,13 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
  */
+#import "DPerfReporting.h"
 
-#import "AppDelegate.h"
-#import "DProfiler.h"
-#import "Requester.h"
-#import "SampleProfiledApp.h"
-
-#define SERVER_URL @"http://localhost:9123"
-
-@implementation AppDelegate
-
-- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
-{
-    // TODO: Install New Relic Mobile to monitor your distributed app benchmarks. https://newrelic.com/mobile
-
-    [DProfiler profileToServer:SERVER_URL
-               withSampleRate:50.0
-                  andDuration:65
-                  andTestName:@"your test name"];
-
-    [SampleProfiledApp start];
-
-    return YES;
-}
-
-
-- (void)applicationWillResignActive:(UIApplication *)application
-{
-}
-
-- (void)applicationDidEnterBackground:(UIApplication *)application
-{
-}
-
-- (void)applicationWillEnterForeground:(UIApplication *)application
-{
-}
-
-- (void)applicationDidBecomeActive:(UIApplication *)application
-{
-}
-
-- (void)applicationWillTerminate:(UIApplication *)application
-{
-}
-
-
-
-@end
+NSString *const DPerfReportTestNameKey = @"name";
+NSString *const DPerfReportRunIDKey = @"runId";
+NSString *const DPerfReportTimeKey = @"time";
+NSString *const DPerfReportSystemVersionKey = @"version";
+NSString *const DPerfReportDeviceModelKey = @"model";
+NSString *const DPerfReportSampleRateKey = @"sampleRate";
+NSString *const DPerfReportProfileDurationKey = @"duration";
+NSString *const DPerfReportSamplesKey = @"samples";

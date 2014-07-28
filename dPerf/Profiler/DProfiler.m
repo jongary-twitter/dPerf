@@ -1,16 +1,16 @@
 /*
  Copyright (c) 2013 New Relic, Inc.
- 
+
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
  in the Software without restriction, including without limitation the rights
  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  copies of the Software, and to permit persons to whom the Software is
  furnished to do so, subject to the following conditions:
- 
+
  The above copyright notice and this permission notice shall be included in
  all copies or substantial portions of the Software.
- 
+
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -23,6 +23,9 @@
 #import "DProfiler.h"
 #import <mach/mach.h>
 #import <mach/mach_time.h>
+
+#import "DProfilerRESTReporter.h"
+
 
 @interface DProfiler() {
     double _sampleRate;
@@ -44,12 +47,28 @@
              andDuration: (int) duration
              andTestName: (NSString *)testName
 {
+
     DProfiler *p = [[DProfiler alloc] initWithServer:serverUrl
                                      andSampleRate:sampleRate
                                        andDuration:duration
                                        andTestName:testName];
     [p start];
     return p;
+}
+
+- (instancetype)initWithReporter:(id<DPerfReporting>)reporter
+                  withSampleRate: (double) sampleRate
+                     andDuration: (int) duration
+                     andTestName: (NSString *)testName
+{
+    self = [super init];
+    if (self) {
+        _reporter = reporter;
+        _sampleRate = sampleRate;
+        _duration = duration;
+        _testName = [testName copy];
+    }
+    return self;
 }
 
 - (id) initWithServer: (NSString *) serverUrl
@@ -59,13 +78,14 @@
 {
     self = [super init];
     if (self) {
+        _reporter = [[DprofilerRESTReporter alloc] initWithURL:[NSURL URLWithString:serverUrl]];
         _sampleRate = sampleRate;
         _duration = duration;
         _testName = [testName copy];
         _serverUrl = serverUrl;
-        
+
         mach_timebase_info(&self->_timebaseInfo);
-        
+
         [self reset];
         _samplingOverhead = [self benchmarkSample];
     }
@@ -86,7 +106,7 @@
 - (void) stop
 {
     dispatch_source_cancel(_dispatchTimer);
-    
+
     if (_samples.count < _maxSamples) {
         NSLog(@"Prematurely stopped. sampling incomplete.");
     } else {
@@ -120,7 +140,7 @@
 {
     // Call the block once beforehand, warming up any method table lookups.
     block();
-    
+
     uint64_t start = mach_absolute_time();
     for(int t = 0; t < trials; t++) {
         block();
@@ -133,18 +153,18 @@
 {
     // Temporarily modify max number of samples, generate some samples, but
     // not enough to trigger reporting.
-    
+
     _maxSamples = BENCHMARK_TRIALS + 2;
     _samples = [NSMutableArray arrayWithCapacity: self->_maxSamples];
-    
+
     uint64_t benchInterval = [self benchmarkWithTrials:BENCHMARK_TRIALS
                                               andBlock:^{
         [self sample];
     }];
-    
+
     // Clean up our mess.
     [self reset];
-    
+
     return [self secondsFromInterval:benchInterval];
 }
 
@@ -153,67 +173,43 @@
 - (void) report
 {
     NSLog(@"Sending samples to %@", _serverUrl);
-    
+
     // Snapshot the samples, in case sample collection is ongoing.
     NSArray *samples = [_samples copyWithZone:NULL];
-    
+
     UIDevice *dev = [UIDevice currentDevice];
     NSNumber *runId = [NSNumber numberWithUnsignedInt: [self randomRunId]];
     NSNumber *epoch = [NSNumber numberWithUnsignedInt: [[NSDate date] timeIntervalSince1970]];
     NSNumber *sampleRate = [NSNumber numberWithUnsignedInt:_sampleRate];
     NSNumber *duration = [NSNumber numberWithUnsignedInt:_duration];
-    
+
     // Dictionary which will be serialized to JSON.
     NSDictionary *dict = [NSDictionary dictionaryWithObjectsAndKeys:
-                          _testName, @"name",               // Test name
-                          runId, @"runId",                  // Unique run ID
-                          epoch, @"time",                   // Timestamp
-                          [dev systemVersion], @"version",  // iOS version
-                          [dev model], @"model",            // Device model
-                          sampleRate, @"sampleRate",        // Sampling rate
-                          duration, @"duration",            // Profile duration
-                          samples, @"samples",              // Samples
+                          _testName, DPerfReportTestNameKey,                // Test name
+                          runId, DPerfReportRunIDKey,                       // Unique run ID
+                          epoch, DPerfReportTimeKey,                        // Timestamp
+                          [dev systemVersion], DPerfReportSystemVersionKey,  // iOS version
+                          [dev model], DPerfReportDeviceModelKey,            // Device model
+                          sampleRate, DPerfReportSampleRateKey,             // Sampling rate
+                          duration, DPerfReportProfileDurationKey,           // Profile duration
+                          samples, DPerfReportSamplesKey,                   // Samples
                           nil
                           ];
-    
-    NSData *json = [NSJSONSerialization dataWithJSONObject:dict
-                                                   options:0
-                                                     error: nil];
-    
-    // Create a URL for the request using the |_serverUrl| and appending a
-    // cache busting token.
-    NSString *url = [NSString stringWithFormat:@"%@/?cacheBust=%u",
-                     _serverUrl,
-                     (uint)[[NSDate date] timeIntervalSince1970]
-                     ];
-    
-    NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:url]];
-    
-    [req setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
-    [req setHTTPMethod:@"POST"];
-    [req setHTTPBody:json];
-    
-    NSError *error = [[NSError alloc] init];
-    NSURLResponse *res = [[NSURLResponse alloc] init];
-    
-    NSData *resData = [NSURLConnection sendSynchronousRequest:req returningResponse:&res error:&error];
-    if (resData == nil && error != nil) {
-        NSLog(@"Reporting may have failed: %@", [error localizedDescription]);
-    }
-}
+    [self.reporter reportDictionary:dict];
+  }
 
 // Generate a random 32-bit ID for identifying unique sessions.
 - (uint) randomRunId
 {
     uint8_t b[4];
     uint runId;
-    
+
     int ret = SecRandomCopyBytes(kSecRandomDefault, 4, b);
     if (ret < 0) {
         NSLog(@"Error generating random run id. errno %d", errno);
         return 0;
     }
-    
+
     runId = b[0] << 24 | b[1] << 16 | b[2] << 8 | b[3];
     return runId;
 }
@@ -233,7 +229,7 @@
     unsigned table_array_size;
     struct task_basic_info ti;
     double total_time;
-    
+
     task = mach_task_self();
     count = TASK_BASIC_INFO_COUNT;
     error = task_info(task, TASK_BASIC_INFO, (task_info_t)&ti, &count);
@@ -242,50 +238,50 @@
     }
     {
         unsigned i;
-        
+
         total_time = ti.user_time.seconds + ti.user_time.microseconds * 1e-6;
         total_time += ti.system_time.seconds + ti.system_time.microseconds * 1e-6;
-        
+
         error = task_threads(task, &thread_table, &table_size);
-        
+
         if (error != KERN_SUCCESS) {
             error = mach_port_deallocate(mach_task_self(), task);
             assert(error == KERN_SUCCESS);
             return -1;
         }
-        
+
         thi = &thi_data;
         table_array_size = table_size * sizeof(thread_array_t);
-        
+
         for (i = 0; i < table_size; ++i) {
             count = THREAD_BASIC_INFO_COUNT;
             error = thread_info(thread_table[i], THREAD_BASIC_INFO, (thread_info_t)thi, &count);
-            
+
 
             if (error != KERN_SUCCESS) {
                 for (; i < table_size; ++i) {
                     error = mach_port_deallocate(mach_task_self(), thread_table[i]);
                     assert(error == KERN_SUCCESS);
                 }
-                
+
                 error = vm_deallocate(mach_task_self(), (vm_offset_t)thread_table, table_array_size);
                 assert(error == KERN_SUCCESS);
-                
+
                 error = mach_port_deallocate(mach_task_self(), task);
                 assert(error == KERN_SUCCESS);
-                
+
                 return -1;
             }
-            
+
             if ((thi->flags & TH_FLAGS_IDLE) == 0) {
                 total_time += thi->user_time.seconds + thi->user_time.microseconds * 1e-6;
                 total_time += thi->system_time.seconds + thi->system_time.microseconds * 1e-6;
             }
-            
+
             error = mach_port_deallocate(mach_task_self(), thread_table[i]);
             assert(error == KERN_SUCCESS);
         }
-        
+
         error = vm_deallocate(mach_task_self(), (vm_offset_t)thread_table, table_array_size);
         assert(error == KERN_SUCCESS);
     }

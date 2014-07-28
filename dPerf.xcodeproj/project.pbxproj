@@ -26,6 +26,8 @@
 		7F956D4017678F02002B4680 /* Default-568h@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 7F956D3F17678F02002B4680 /* Default-568h@2x.png */; };
 		7F956D4317678F02002B4680 /* MainStoryboard_iPhone.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 7F956D4117678F02002B4680 /* MainStoryboard_iPhone.storyboard */; };
 		7F956D4617678F02002B4680 /* MainStoryboard_iPad.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 7F956D4417678F02002B4680 /* MainStoryboard_iPad.storyboard */; };
+		C0975DBC1982F4410085812A /* DProfilerRESTReporter.m in Sources */ = {isa = PBXBuildFile; fileRef = C0975DBB1982F4410085812A /* DProfilerRESTReporter.m */; };
+		C0975DBE19830CE20085812A /* DPerfReporting.m in Sources */ = {isa = PBXBuildFile; fileRef = C0975DBD19830CE20085812A /* DPerfReporting.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -56,6 +58,10 @@
 		7F956D3F17678F02002B4680 /* Default-568h@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Default-568h@2x.png"; sourceTree = "<group>"; };
 		7F956D4217678F02002B4680 /* en */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = en; path = en.lproj/MainStoryboard_iPhone.storyboard; sourceTree = "<group>"; };
 		7F956D4517678F02002B4680 /* en */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = en; path = en.lproj/MainStoryboard_iPad.storyboard; sourceTree = "<group>"; };
+		C0975DB91982F1280085812A /* DPerfReporting.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = DPerfReporting.h; path = Profiler/DPerfReporting.h; sourceTree = "<group>"; };
+		C0975DBA1982F4410085812A /* DProfilerRESTReporter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = DProfilerRESTReporter.h; path = Profiler/DProfilerRESTReporter.h; sourceTree = "<group>"; };
+		C0975DBB1982F4410085812A /* DProfilerRESTReporter.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = DProfilerRESTReporter.m; path = Profiler/DProfilerRESTReporter.m; sourceTree = "<group>"; };
+		C0975DBD19830CE20085812A /* DPerfReporting.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = DPerfReporting.m; path = Profiler/DPerfReporting.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -138,6 +144,10 @@
 			children = (
 				7F6F82A91767935C00D33483 /* DProfiler.h */,
 				7F6F82AA1767935C00D33483 /* DProfiler.m */,
+				C0975DBA1982F4410085812A /* DProfilerRESTReporter.h */,
+				C0975DBB1982F4410085812A /* DProfilerRESTReporter.m */,
+				C0975DB91982F1280085812A /* DPerfReporting.h */,
+				C0975DBD19830CE20085812A /* DPerfReporting.m */,
 			);
 			name = Profiler;
 			sourceTree = "<group>";
@@ -224,11 +234,13 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C0975DBC1982F4410085812A /* DProfilerRESTReporter.m in Sources */,
 				7F956D3617678F02002B4680 /* main.m in Sources */,
 				7F6F82AB1767935C00D33483 /* DProfiler.m in Sources */,
 				7F6F82B21767936800D33483 /* AppDelegate.m in Sources */,
 				7F6F82B31767936800D33483 /* Requester.m in Sources */,
 				7F6F82B41767936800D33483 /* ViewController.m in Sources */,
+				C0975DBE19830CE20085812A /* DPerfReporting.m in Sources */,
 				7F6F82B71767939800D33483 /* SampleProfiledApp.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
